@@ -47,4 +47,6 @@ jobs:
             rm -rf ~/app/frontend_build/*
             cp -r ~/app/frontend_temp/* ~/app/frontend_build/
             rm -rf ~/app/frontend_temp
-            echo "✅ Frontend Deployed Successfully"
+            chmod -R 755 ~/app/frontend_build
+            echo "✅ Frontend Deployed and Permissions Fixed"
+            
