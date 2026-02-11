@@ -1,0 +1,50 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Project
+        run: npm run build
+        env:
+          # This injects the variable into the build process
+          VITE_API_URL: https://api.nic-ball.co.uk/api/
+
+      # Copy files to VPS using SCP
+      - name: Copy to VPS
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "dist/*"
+          target: "/home/${{ secrets.VPS_USER }}/app/frontend_temp"
+          strip_components: 1
+
+      # Move files to Nginx folder safely
+      - name: Update Nginx Folder
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # Clear old build and move new one
+            rm -rf ~/app/frontend_build/*
+            cp -r ~/app/frontend_temp/* ~/app/frontend_build/
+            rm -rf ~/app/frontend_temp
+            echo "✅ Frontend Deployed Successfully"
