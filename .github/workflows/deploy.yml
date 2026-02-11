@@ -43,10 +43,16 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Clear old build and move new one
+            # 1. Clean old files
             rm -rf ~/app/frontend_build/*
-            cp -r ~/app/frontend_temp/* ~/app/frontend_build/
-            rm -rf ~/app/frontend_temp
-            chmod -R 755 ~/app/frontend_build
-            echo "✅ Frontend Deployed and Permissions Fixed"
             
+            # 2. Copy new files
+            cp -r ~/app/frontend_temp/* ~/app/frontend_build/
+            
+            # 3. Clean temp folder
+            rm -rf ~/app/frontend_temp
+            
+            # 4. FIX PERMISSIONS (Crucial Step)
+            chmod -R 755 ~/app/frontend_build
+            
+            echo "✅ Frontend Deployed and Permissions Fixed"
