@@ -24,38 +24,51 @@ jobs:
           # This injects the variable into the build process
           VITE_API_URL: https://api.nic-ball.co.uk/api/
 
-      # 1. Copy the build folder to a temporary folder on VPS
+      # 1. Prepare a Clean Temp Directory (SSH)
+      # We do this FIRST to make sure the folder exists for SCP
+      - name: Prepare Temp Directory
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # Remove any existing temp folder to ensure a clean upload
+            rm -rf /home/${{ secrets.VPS_USER }}/app/frontend_temp
+            mkdir -p /home/${{ secrets.VPS_USER }}/app/frontend_temp
+
+      # 2. Copy Files to the Temp Directory (SCP)
       - name: Copy to VPS
         uses: appleboy/scp-action@master
         with:
-          host: ${{ secrets.VPS_IP }} # Or VPS_IP depending on your secret name
+          host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "dist/"
-          target: "/home/${{ secrets.VPS_USER }}/app/frontend_new"
+          key: ${{ secrets.SSH_KEY }}
+          source: "dist/*"
+          target: "/home/${{ secrets.VPS_USER }}/app/frontend_temp"
           strip_components: 1
 
-      # 2. Perform the "Atomic Swap"
-      - name: Switch to New Build
+      # 3. Atomic Swap & Permissions (SSH)
+      - name: Deploy and Reload
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_IP }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Stop if the new folder didn't arrive (Safety Check)
-            if [ ! -d "~/app/frontend_new" ]; then
-              echo "❌ Error: New build folder missing!"
-              exit 1
+            # Check if upload worked
+            if [ -z "$(ls -A /home/${{ secrets.VPS_USER }}/app/frontend_temp)" ]; then
+               echo "❌ Error: Temp folder is empty! SCP failed."
+               exit 1
             fi
 
             # Remove the old live folder
-            rm -rf ~/app/frontend_build
+            rm -rf /home/${{ secrets.VPS_USER }}/app/frontend_build
 
-            # Rename the new folder to become the live folder
-            mv ~/app/frontend_new ~/app/frontend_build
+            # Move temp to live
+            mv /home/${{ secrets.VPS_USER }}/app/frontend_temp /home/${{ secrets.VPS_USER }}/app/frontend_build
 
-            # Fix permissions (The critical step)
-            chmod -R 755 ~/app/frontend_build
+            # Fix Permissions (Crucial!)
+            chmod -R 755 /home/${{ secrets.VPS_USER }}/app/frontend_build
 
-            echo "✅ Atomic Deploy Complete"
+            echo "✅ Deployment Complete"
