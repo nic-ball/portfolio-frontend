@@ -24,35 +24,38 @@ jobs:
           # This injects the variable into the build process
           VITE_API_URL: https://api.nic-ball.co.uk/api/
 
-      # Copy files to VPS using SCP
+      # 1. Copy the build folder to a temporary folder on VPS
       - name: Copy to VPS
         uses: appleboy/scp-action@master
         with:
-          host: ${{ secrets.VPS_IP }}
+          host: ${{ secrets.VPS_IP }} # Or VPS_IP depending on your secret name
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "dist/*"
-          target: "/home/${{ secrets.VPS_USER }}/app/frontend_temp"
+          source: "dist/"
+          target: "/home/${{ secrets.VPS_USER }}/app/frontend_new"
           strip_components: 1
 
-      # Move files to Nginx folder safely
-      - name: Update Nginx Folder
+      # 2. Perform the "Atomic Swap"
+      - name: Switch to New Build
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_IP }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # 1. Clean old files
-            rm -rf ~/app/frontend_build/*
-            
-            # 2. Copy new files
-            cp -r ~/app/frontend_temp/* ~/app/frontend_build/
-            
-            # 3. Clean temp folder
-            rm -rf ~/app/frontend_temp
-            
-            # 4. FIX PERMISSIONS (Crucial Step)
+            # Stop if the new folder didn't arrive (Safety Check)
+            if [ ! -d "~/app/frontend_new" ]; then
+              echo "❌ Error: New build folder missing!"
+              exit 1
+            fi
+
+            # Remove the old live folder
+            rm -rf ~/app/frontend_build
+
+            # Rename the new folder to become the live folder
+            mv ~/app/frontend_new ~/app/frontend_build
+
+            # Fix permissions (The critical step)
             chmod -R 755 ~/app/frontend_build
-            
-            echo "✅ Frontend Deployed and Permissions Fixed"
+
+            echo "✅ Atomic Deploy Complete"
