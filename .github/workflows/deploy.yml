@@ -57,18 +57,21 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             # Check if upload worked
-            if [ -z "$(ls -A /home/${{ secrets.VPS_USER }}/app/frontend_temp)" ]; then
+            if[ -z "$(ls -A /home/${{ secrets.VPS_USER }}/app/frontend_temp)" ]; then
                echo "❌ Error: Temp folder is empty! SCP failed."
                exit 1
             fi
 
-            # Remove the old live folder
-            rm -rf /home/${{ secrets.VPS_USER }}/app/frontend_build
+            # EMPY THE FOLDER (Do NOT delete the folder itself, or Docker breaks)
+            rm -rf /home/${{ secrets.VPS_USER }}/app/frontend_build/*
 
-            # Move temp to live
-            mv /home/${{ secrets.VPS_USER }}/app/frontend_temp /home/${{ secrets.VPS_USER }}/app/frontend_build
+            # COPY the new files inside
+            cp -r /home/${{ secrets.VPS_USER }}/app/frontend_temp/* /home/${{ secrets.VPS_USER }}/app/frontend_build/
 
-            # Fix Permissions (Crucial!)
+            # Delete the temp folder
+            rm -rf /home/${{ secrets.VPS_USER }}/app/frontend_temp
+
+            # Fix Permissions
             chmod -R 755 /home/${{ secrets.VPS_USER }}/app/frontend_build
 
             echo "✅ Deployment Complete"
