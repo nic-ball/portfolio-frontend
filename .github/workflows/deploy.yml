@@ -57,7 +57,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             # Check if upload worked
-            if[ -z "$(ls -A /home/${{ secrets.VPS_USER }}/app/frontend_temp)" ]; then
+            if [ -z "$(ls -A /home/${{ secrets.VPS_USER }}/app/frontend_temp)" ]; then
                echo "❌ Error: Temp folder is empty! SCP failed."
                exit 1
             fi
